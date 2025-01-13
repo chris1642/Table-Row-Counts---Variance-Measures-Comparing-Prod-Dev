@@ -1,0 +1,85 @@
+// Define the name of the calculated table for variance measures
+string varianceTableName = "Variance Measures";
+
+// Check if the "Variance Measures" table exists; create if not
+var varianceTable = Model.Tables.FirstOrDefault(t => t.Name == varianceTableName);
+if (varianceTable == null)
+{
+    // Create a calculated table with a blank column
+    varianceTable = Model.AddCalculatedTable(
+        varianceTableName,
+        "ROW(\"Column\", BLANK())"
+    );
+    varianceTable.IsHidden = false; // Set to true if you prefer to hide this table
+}
+
+// Hide the placeholder column in the Variance Measures table
+var placeholderColumn = varianceTable.Columns.FirstOrDefault(c => c.Name == "Column");
+if (placeholderColumn != null)
+{
+    placeholderColumn.IsHidden = true; // Hide the placeholder column
+}
+
+// Iterate through all tables in the model
+foreach (var table in Model.Tables)
+{
+    // Check if the table is either "- Cloud" or "- Local"
+    if (table.Name.EndsWith(" - Cloud") || table.Name.EndsWith(" - Local"))
+    {
+        // Extract the general table name (without the suffix)
+        string generalTableName = table.Name.Replace(" - Cloud", "").Replace(" - Local", "");
+
+        // Define measure names
+        string cloudMeasureName = $"{generalTableName} Row Count - Cloud";
+        string localMeasureName = $"{generalTableName} Row Count - Local";
+        string varianceMeasureName = $"{generalTableName} Row Count Variance";
+
+        // Locate Cloud and Local tables
+        var cloudTable = Model.Tables.FirstOrDefault(t => t.Name == $"{generalTableName} - Cloud");
+        var localTable = Model.Tables.FirstOrDefault(t => t.Name == $"{generalTableName} - Local");
+
+        if (cloudTable != null && localTable != null)
+        {
+            // Ensure the row count measures exist
+            if (!cloudTable.Measures.Any(m => m.Name == cloudMeasureName))
+            {
+                var cloudMeasure = cloudTable.AddMeasure();
+                cloudMeasure.Name = cloudMeasureName;
+                cloudMeasure.Expression = $"COUNTROWS('{cloudTable.Name}')";
+                cloudMeasure.IsHidden = true;
+                cloudMeasure.Description = $"{generalTableName} row count - Cloud for validation purposes";
+                cloudMeasure.FormatString = "#,##0"; // Set whole number format
+            }
+
+            if (!localTable.Measures.Any(m => m.Name == localMeasureName))
+            {
+                var localMeasure = localTable.AddMeasure();
+                localMeasure.Name = localMeasureName;
+                localMeasure.Expression = $"COUNTROWS('{localTable.Name}')";
+                localMeasure.IsHidden = true;
+                localMeasure.Description = $"{generalTableName} row count - Local for validation purposes";
+                localMeasure.FormatString = "#,##0"; // Set whole number format
+            }
+
+            // Add the variance measure to the "Variance Measures" table
+            if (!varianceTable.Measures.Any(m => m.Name == varianceMeasureName))
+            {
+                var varianceMeasure = varianceTable.AddMeasure();
+                varianceMeasure.Name = varianceMeasureName;
+                varianceMeasure.Expression = $"[{localMeasureName}] - [{cloudMeasureName}]";
+                varianceMeasure.IsHidden = false; // Keep visible for reporting purposes
+                varianceMeasure.Description = $"{generalTableName} row count variance between Local and Cloud";
+                varianceMeasure.FormatString = "#,##0"; // Set whole number format
+            }
+        }
+    }
+}
+
+// Ensure all existing "Row Count" measures are formatted as whole numbers
+foreach (var table in Model.Tables)
+{
+    foreach (var measure in table.Measures.Where(m => m.Name.Contains("Row Count")))
+    {
+        measure.FormatString = "#,##0"; // Set whole number format
+    }
+}
