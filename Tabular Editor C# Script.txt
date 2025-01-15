@@ -23,15 +23,15 @@ if (placeholderColumn != null)
 // Iterate through all tables in the model
 foreach (var table in Model.Tables)
 {
-    // Check if the table is either "- Cloud" or "- Local"
+    // Check if the table ends with "- Cloud" or "- Local"
     if (table.Name.EndsWith(" - Cloud") || table.Name.EndsWith(" - Local"))
     {
         // Extract the general table name (without the suffix)
         string generalTableName = table.Name.Replace(" - Cloud", "").Replace(" - Local", "");
 
         // Define measure names
-        string cloudMeasureName = $"{generalTableName} Row Count - Cloud";
-        string localMeasureName = $"{generalTableName} Row Count - Local";
+        string cloudMeasureName = $"*{generalTableName} Row Count - Cloud";
+        string localMeasureName = $"*{generalTableName} Row Count - Local";
         string varianceMeasureName = $"{generalTableName} Row Count Variance";
 
         // Locate Cloud and Local tables
@@ -46,7 +46,7 @@ foreach (var table in Model.Tables)
                 var cloudMeasure = cloudTable.AddMeasure();
                 cloudMeasure.Name = cloudMeasureName;
                 cloudMeasure.Expression = $"COUNTROWS('{cloudTable.Name}')";
-                cloudMeasure.IsHidden = true;
+                cloudMeasure.IsHidden = false;
                 cloudMeasure.Description = $"{generalTableName} row count - Cloud for validation purposes";
                 cloudMeasure.FormatString = "#,##0"; // Set whole number format
             }
@@ -56,7 +56,7 @@ foreach (var table in Model.Tables)
                 var localMeasure = localTable.AddMeasure();
                 localMeasure.Name = localMeasureName;
                 localMeasure.Expression = $"COUNTROWS('{localTable.Name}')";
-                localMeasure.IsHidden = true;
+                localMeasure.IsHidden = false;
                 localMeasure.Description = $"{generalTableName} row count - Local for validation purposes";
                 localMeasure.FormatString = "#,##0"; // Set whole number format
             }
@@ -71,6 +71,21 @@ foreach (var table in Model.Tables)
                 varianceMeasure.Description = $"{generalTableName} row count variance between Local and Cloud";
                 varianceMeasure.FormatString = "#,##0"; // Set whole number format
             }
+        }
+    }
+    else
+    {
+        // For tables that do not end with "- Cloud" or "- Local", add a row count measure
+        string rowCountMeasureName = $"*{table.Name} Row Count";
+
+        if (!table.Measures.Any(m => m.Name == rowCountMeasureName))
+        {
+            var rowCountMeasure = table.AddMeasure();
+            rowCountMeasure.Name = rowCountMeasureName;
+            rowCountMeasure.Expression = $"COUNTROWS('{table.Name}')";
+            rowCountMeasure.IsHidden = false; // Keep visible for reporting purposes
+            rowCountMeasure.Description = $"{table.Name} row count for validation purposes";
+            rowCountMeasure.FormatString = "#,##0"; // Set whole number format
         }
     }
 }
